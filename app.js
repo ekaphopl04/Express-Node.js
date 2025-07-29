@@ -1,25 +1,15 @@
+require('reflect-metadata');
 const express = require('express');
-const { Pool } = require('pg');
+const { AppDataSource } = require('./data-source');
+const { User } = require('./entities/User');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// PostgreSQL connection configuration
-const pool = new Pool({
-  host: 'localhost',
-  port: 5432,
-  database: 'databasenodejs',
-  user: 'ekaphop',
-  password: 'bb1234',
-});
-
-// Test database connection
-pool.connect((err, client, release) => {
-  if (err) {
-    console.error('Error connecting to PostgreSQL database:', err.stack);
-  } else {
-    console.log('Successfully connected to PostgreSQL database');
-    release();
-  }
+// Initialize TypeORM connection
+AppDataSource.initialize().then(() => {
+    console.log('Successfully connected to PostgreSQL database with TypeORM');
+}).catch((error) => {
+    console.error('Error connecting to PostgreSQL database:', error);
 });
 
 // Middleware
@@ -67,11 +57,16 @@ app.get('/api', (req, res) => {
 // GET /api/users - Get all users
 app.get('/api/users', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM users ORDER BY "createdAt" DESC');
+    const userRepository = AppDataSource.getRepository(User);
+    const users = await userRepository.find({
+      order: {
+        createdAt: 'DESC'
+      }
+    });
     res.json({
       success: true,
-      data: result.rows,
-      count: result.rows.length
+      data: users,
+      count: users.length
     });
   } catch (error) {
     console.error('Error fetching users:', error);
@@ -96,9 +91,12 @@ app.get('/api/users/:id', async (req, res) => {
       });
     }
 
-    const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+    const userRepository = AppDataSource.getRepository(User);
+    const user = await userRepository.findOne({
+      where: { id: parseInt(id) }
+    });
     
-    if (result.rows.length === 0) {
+    if (!user) {
       return res.status(404).json({
         success: false,
         message: 'User not found'
@@ -107,7 +105,7 @@ app.get('/api/users/:id', async (req, res) => {
 
     res.json({
       success: true,
-      data: result.rows[0]
+      data: user
     });
   } catch (error) {
     console.error('Error fetching user:', error);
@@ -141,25 +139,32 @@ app.post('/api/users', async (req, res) => {
       });
     }
 
+    const userRepository = AppDataSource.getRepository(User);
+    
     // Check if email already exists
-    const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
-    if (existingUser.rows.length > 0) {
+    const existingUser = await userRepository.findOne({
+      where: { email }
+    });
+    if (existingUser) {
       return res.status(409).json({
         success: false,
         message: 'Email already exists'
       });
     }
 
-    // Insert new user
-    const result = await pool.query(
-      'INSERT INTO users ("firstName", "lastName", email) VALUES ($1, $2, $3) RETURNING *',
-      [firstName, lastName, email]
-    );
+    // Create new user
+    const newUser = userRepository.create({
+      firstName,
+      lastName,
+      email
+    });
+    
+    const savedUser = await userRepository.save(newUser);
 
     res.status(201).json({
       success: true,
       message: 'User created successfully',
-      data: result.rows[0]
+      data: savedUser
     });
   } catch (error) {
     console.error('Error creating user:', error);
@@ -185,9 +190,13 @@ app.put('/api/users/:id', async (req, res) => {
       });
     }
 
+    const userRepository = AppDataSource.getRepository(User);
+    
     // Check if user exists
-    const existingUser = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
-    if (existingUser.rows.length === 0) {
+    const existingUser = await userRepository.findOne({
+      where: { id: parseInt(id) }
+    });
+    if (!existingUser) {
       return res.status(404).json({
         success: false,
         message: 'User not found'
@@ -213,8 +222,11 @@ app.put('/api/users/:id', async (req, res) => {
       }
 
       // Check if email already exists for another user
-      const emailCheck = await pool.query('SELECT id FROM users WHERE email = $1 AND id != $2', [email, id]);
-      if (emailCheck.rows.length > 0) {
+      const emailCheck = await userRepository.createQueryBuilder('user')
+        .where('user.email = :email', { email })
+        .andWhere('user.id != :id', { id: parseInt(id) })
+        .getOne();
+      if (emailCheck) {
         return res.status(409).json({
           success: false,
           message: 'Email already exists'
@@ -222,37 +234,17 @@ app.put('/api/users/:id', async (req, res) => {
       }
     }
 
-    // Build dynamic update query
-    const updateFields = [];
-    const values = [];
-    let paramCount = 1;
+    // Update user fields
+    if (firstName) existingUser.firstName = firstName;
+    if (lastName) existingUser.lastName = lastName;
+    if (email) existingUser.email = email;
 
-    if (firstName) {
-      updateFields.push(`"firstName" = $${paramCount}`);
-      values.push(firstName);
-      paramCount++;
-    }
-    if (lastName) {
-      updateFields.push(`"lastName" = $${paramCount}`);
-      values.push(lastName);
-      paramCount++;
-    }
-    if (email) {
-      updateFields.push(`email = $${paramCount}`);
-      values.push(email);
-      paramCount++;
-    }
-
-    updateFields.push(`"updatedAt" = CURRENT_TIMESTAMP`);
-    values.push(id);
-
-    const query = `UPDATE users SET ${updateFields.join(', ')} WHERE id = $${paramCount} RETURNING *`;
-    const result = await pool.query(query, values);
+    const updatedUser = await userRepository.save(existingUser);
 
     res.json({
       success: true,
       message: 'User updated successfully',
-      data: result.rows[0]
+      data: updatedUser
     });
   } catch (error) {
     console.error('Error updating user:', error);
@@ -277,9 +269,13 @@ app.delete('/api/users/:id', async (req, res) => {
       });
     }
 
+    const userRepository = AppDataSource.getRepository(User);
+    
     // Check if user exists
-    const existingUser = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
-    if (existingUser.rows.length === 0) {
+    const existingUser = await userRepository.findOne({
+      where: { id: parseInt(id) }
+    });
+    if (!existingUser) {
       return res.status(404).json({
         success: false,
         message: 'User not found'
@@ -287,12 +283,12 @@ app.delete('/api/users/:id', async (req, res) => {
     }
 
     // Delete user
-    await pool.query('DELETE FROM users WHERE id = $1', [id]);
+    await userRepository.remove(existingUser);
 
     res.json({
       success: true,
       message: 'User deleted successfully',
-      data: existingUser.rows[0]
+      data: existingUser
     });
   } catch (error) {
     console.error('Error deleting user:', error);
@@ -305,22 +301,26 @@ app.delete('/api/users/:id', async (req, res) => {
 });
 
 // Database test endpoint
-app.get('/db-test', async (req, res) => {
+app.get('/test-db', async (req, res) => {
   try {
-    const client = await pool.connect();
-    const result = await client.query('SELECT NOW() as current_time');
-    client.release();
+    const userRepository = AppDataSource.getRepository(User);
+    const userCount = await userRepository.count();
     
     res.json({
-      message: 'Database connection successful!',
-      timestamp: result.rows[0].current_time,
-      database: 'dattabasenodejs'
+      success: true,
+      message: 'TypeORM database connection successful',
+      data: {
+        current_time: new Date().toISOString(),
+        database: 'PostgreSQL with TypeORM',
+        user_count: userCount
+      }
     });
-  } catch (err) {
-    console.error('Database query error:', err);
+  } catch (error) {
+    console.error('Database test error:', error);
     res.status(500).json({
-      error: 'Database connection failed',
-      message: err.message
+      success: false,
+      message: 'Database connection failed',
+      error: error.message
     });
   }
 });
