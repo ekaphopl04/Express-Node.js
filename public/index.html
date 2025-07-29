@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Express.js + TypeORM API</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 Express.js + TypeORM API</h1>
+            <p>User Management System with CRUD Operations</p>
+        </header>
+
+        <main>
+            <section class="api-info">
+                <h2>📋 Available API Endpoints</h2>
+                <div class="endpoints">
+                    <div class="endpoint">
+                        <span class="method get">GET</span>
+                        <span class="url">/api/users</span>
+                        <span class="description">Get all users</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method get">GET</span>
+                        <span class="url">/api/users/:id</span>
+                        <span class="description">Get user by ID</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method post">POST</span>
+                        <span class="url">/api/users</span>
+                        <span class="description">Create new user</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method put">PUT</span>
+                        <span class="url">/api/users/:id</span>
+                        <span class="description">Update user</span>
+                    </div>
+                    <div class="endpoint">
+                        <span class="method delete">DELETE</span>
+                        <span class="url">/api/users/:id</span>
+                        <span class="description">Delete user</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="test-section">
+                <h2>🧪 Test API</h2>
+                <button id="testBtn" class="btn">Test GET /api/users</button>
+                <div id="result" class="result"></div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Built with Express.js, TypeORM & PostgreSQL</p>
+        </footer>
+    </div>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>
