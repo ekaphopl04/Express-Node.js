@@ -1,6 +1,26 @@
 const express = require('express');
+const { Pool } = require('pg');
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// PostgreSQL connection configuration
+const pool = new Pool({
+  host: 'localhost',
+  port: 5432,
+  database: 'databasenodejs',
+  user: 'ekaphop',
+  password: 'bb1234',
+});
+
+// Test database connection
+pool.connect((err, client, release) => {
+  if (err) {
+    console.error('Error connecting to PostgreSQL database:', err.stack);
+  } else {
+    console.log('Successfully connected to PostgreSQL database');
+    release();
+  }
+});
 
 // Middleware
 app.use(express.json());
@@ -34,6 +54,27 @@ app.get('/api', (req, res) => {
       posts: []
     }
   });
+});
+
+// Database test endpoint
+app.get('/db-test', async (req, res) => {
+  try {
+    const client = await pool.connect();
+    const result = await client.query('SELECT NOW() as current_time');
+    client.release();
+    
+    res.json({
+      message: 'Database connection successful!',
+      timestamp: result.rows[0].current_time,
+      database: 'dattabasenodejs'
+    });
+  } catch (err) {
+    console.error('Database query error:', err);
+    res.status(500).json({
+      error: 'Database connection failed',
+      message: err.message
+    });
+  }
 });
 
 // Error handling middleware
