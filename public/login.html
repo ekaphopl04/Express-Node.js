@@ -189,7 +189,18 @@
         </div>
     </div>
 
+    <script src="/js/auth.js"></script>
     <script>
+        // Check if user is already logged in
+        document.addEventListener('DOMContentLoaded', async function() {
+            const isAuth = await authManager.checkAuth();
+            if (isAuth) {
+                // User is already logged in, redirect to dashboard
+                window.location.href = '/dashboard.html';
+                return;
+            }
+        });
+
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             

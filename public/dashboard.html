@@ -194,7 +194,20 @@
         </div>
     </div>
 
+    <script src="/js/auth.js"></script>
     <script>
+        // Check authentication before loading page
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Require authentication - redirect if not logged in
+            const isAuth = await authManager.requireAuth();
+            if (!isAuth) {
+                return; // Will be redirected by requireAuth
+            }
+            
+            // User is authenticated, load profile
+            await loadProfile();
+        });
+
         // Check if user is authenticated and load profile
         async function loadProfile() {
             try {
@@ -260,8 +273,7 @@
             }
         }
 
-        // Load profile when page loads
-        document.addEventListener('DOMContentLoaded', loadProfile);
+
     </script>
 </body>
 </html>

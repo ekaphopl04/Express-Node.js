@@ -1,5 +1,7 @@
 // Frontend JavaScript for API testing and navigation
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+    // Initialize authentication and update navigation
+    await authManager.updateNavigation();
     // Mobile Navigation Toggle
     const navToggle = document.getElementById('nav-toggle');
     const navMenu = document.getElementById('nav-menu');
