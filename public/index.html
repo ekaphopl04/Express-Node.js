@@ -78,5 +78,85 @@
 
     <script src="/js/auth.js"></script>
     <script src="/js/app.js"></script>
+    <script>
+        // Check authentication before loading page
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Require authentication - redirect if not logged in
+            const isAuth = await authManager.requireAuth();
+            if (!isAuth) {
+                return; // Will be redirected by requireAuth
+            }
+            
+            // User is authenticated, load profile
+            await loadProfile();
+        });
+
+        // Check if user is authenticated and load profile
+        async function loadProfile() {
+            try {
+                const response = await fetch('/auth/profile');
+                
+                if (!response.ok) {
+                    // User is not authenticated, redirect to login
+                    window.location.href = '/login.html';
+                    return;
+                }
+
+                const data = await response.json();
+                const user = data.user;
+
+                // Update user name in header
+                document.getElementById('user-name').textContent = `${user.firstName} ${user.lastName}`;
+
+                // Create profile info HTML
+                const profileContent = document.getElementById('profile-content');
+                profileContent.innerHTML = `
+                    <div class="profile-info">
+                        <div class="info-item">
+                            <div class="info-label">First Name</div>
+                            <div class="info-value">${user.firstName}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Last Name</div>
+                            <div class="info-value">${user.lastName}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Email</div>
+                            <div class="info-value">${user.email}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Member Since</div>
+                            <div class="info-value">${new Date(user.createdAt).toLocaleDateString()}</div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error loading profile:', error);
+                const errorDiv = document.getElementById('error-message');
+                errorDiv.textContent = 'Error loading profile information.';
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        // Logout function
+        async function logout() {
+            try {
+                const response = await fetch('/auth/logout', {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    window.location.href = '/login.html';
+                } else {
+                    alert('Error logging out. Please try again.');
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+                alert('Network error. Please try again.');
+            }
+        }
+
+
+    </script>
 </body>
 </html>
